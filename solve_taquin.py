@@ -1,13 +1,13 @@
 from multiprocessing import Pipe, Process
 import random
 from taquin_class import Taquin, MouveType
-from utils import Plate
+from utils import Plate, comp_double_tab
 import time
 import threading
-import utils
 from draw_plate import Draw_Taquin
 import copy
 from functools import cmp_to_key
+import sys
 
 def parse_file():
     file_path = './npuzzle.txt'
@@ -50,11 +50,11 @@ def parse_file():
 
 
 def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin): 
-    try:
+    
         draw_taquin.plate_draw = taquin.plate
         time.sleep(2)
         while taquin.misplaced > 0:
-            print('manhanan:', taquin.manhatan_distance(taquin.plate))
+            #print('manhanan:', taquin.manhatan_distance(taquin.plate))
             mouves: MouveType = taquin.possible_mouve()
             for mouve in mouves:
                 plate_cpy = copy.deepcopy(taquin.plate)
@@ -62,11 +62,11 @@ def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin):
                 mouve['heuristic'] = taquin.heuristic(plate_cpy)
                 if taquin.is_node_explored(plate_cpy, mouve['dir']):
                      print("already explored")
-                     mouve['heuristic'] *= 1000
+                     mouve['heuristic'] **= taquin.n
            
                   
             random.shuffle(mouves)
-            print('len mouves ', len(mouves))
+            #print('len mouves ', len(mouves))
             best_mouve =  min(mouves, key=lambda x: x['heuristic'])
             #print("mouve", mouves)
           #  print("best mouve", best_mouve)
@@ -80,11 +80,20 @@ def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin):
             #time.sleep(0.02)
 
 
+        required_mouve = []
+        
+        for i in range(0, len(taquin.explored_nodes)): 
+            if taquin.explored_nodes[i] in required_mouve:
+                for k in range(i + 1, len(required_mouve)):
+                     required_mouve.pop(k)
+            else:
+                required_mouve.append(taquin.explored_nodes[i])
+        print("Total number of states ever selected :", len(taquin.explored_nodes))
+        print("Number of moves required  :", len(required_mouve))
 
 
 
-    except ValueError:
-            print(ValueError)
+
 
 
 
@@ -95,10 +104,19 @@ def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin):
 
 
 if __name__ ==  '__main__':
-        test = parse_file()
-        taquin = Taquin(test) 
-        draw_taquin = Draw_Taquin()
-        process_thread = threading.Thread(target=solve_taquin, args=[taquin, draw_taquin ])
-        process_thread.start()
-        draw_taquin.draw()
-        process_thread.join()
+        test: Taquin
+        try:
+            test = parse_file()
+        
+            taquin = Taquin(test) 
+            if not taquin.is_puzzle_solvable():
+                print("The taquin configuration is not soluble")
+                sys.exit()
+
+            draw_taquin = Draw_Taquin()
+            process_thread = threading.Thread(target=solve_taquin, args=[taquin, draw_taquin ])
+            process_thread.start()
+            draw_taquin.draw()
+            process_thread.join()
+        except Exception as e:
+             print(e)

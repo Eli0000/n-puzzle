@@ -2,7 +2,7 @@
 from typing import List, Type
 import subprocess
 import threading
-from multiprocessing import Process, Pipe
+
 
 Plate = Type[List[List[int]]]
 
@@ -46,6 +46,9 @@ def comp_double_tab(tableau1, tableau2):
 
 
         
+
+
+
 
 
 

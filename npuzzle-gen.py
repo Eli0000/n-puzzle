@@ -96,3 +96,12 @@ if __name__ == "__main__":
 		for x in range(s):
 			print("%s" % (str(puzzle[x + y*s]).rjust(w)), end=' ')
 		print()
+
+	with open('npuzzle.txt', 'w') as fichier:
+		# Écrire du contenu dans le fichier
+		fichier.write("# This puzzle is %s\n" % ("solvable" if solv else "unsolvable"))
+		fichier.write("%d\n" % s)
+		for y in range(s):
+			for x in range(s):
+				fichier.write("%s " % (str(puzzle[x + y*s]).rjust(w)))
+			fichier.write('\n')

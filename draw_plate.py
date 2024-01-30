@@ -1,9 +1,11 @@
 from math import floor
-from multiprocessing import Pipe, Process
-import pygame
 import sys
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from utils import Plate
 import time
+import pygame
+
 
 
 
@@ -35,7 +37,6 @@ class Draw_Taquin:
     def draw(self):
         while self.plate_draw == None:
             time.sleep(1)
-        print("sellllffff", self.plate_draw)
         n = len(self.plate_draw)
         square_size = floor((1000 - 10) / n)
 
@@ -47,7 +48,7 @@ class Draw_Taquin:
 
         # Création de la fenêtre
         screen = pygame.display.set_mode((width, height))
-        pygame.display.set_caption("Fenêtre avec rectangles")
+        pygame.display.set_caption("Taquin Game")
 
         # Couleurs
         white = (255, 255, 255)
@@ -61,7 +62,11 @@ class Draw_Taquin:
         while self.run_draw:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    run_draw = False
+                    self.run_draw = False
+                    pygame.quit()
+                    return
+                    sys.exit()
+                    
 
             # Efface l'écran avec une couleur blanche
             screen.fill(white)
@@ -89,6 +94,7 @@ class Draw_Taquin:
 
         # Quitte Pygame
         pygame.quit()
+        return
         sys.exit()
 
 
