@@ -1,4 +1,5 @@
 from cmath import sqrt
+import random
 import subprocess
 from queue import Queue
 import time
@@ -6,14 +7,19 @@ from utils import Plate, ChainedList, comp_double_tab
 from typing import TypedDict
 import copy
 import sys
+import heapq
 
-
-class MouveType(TypedDict):
+class MouveType():
 	x: int
 	y: int
 	dir: str
-	heuristic : float
 	plate: Plate
+
+	def __lt__(self, other): 
+		return True
+
+	def __le__(self, other):
+		return False
 
 
 class Taquin:
@@ -100,84 +106,98 @@ class Taquin:
 		return final_state
 
 	
-	def possible_mouve(self, with_resolved = True) -> list[MouveType]:
+	def get_open_set(self, with_resolved = True) :
+		open_set = []
 		i_0, j_0 = self.find_tuile_pos(0, self.plate)
 		self.i_0 = i_0
 		self.j_0 = j_0
 		i_empty, j_empty = self.find_tuile_pos(0)
-		possible_mouves = []
+		dir_array = ["down", "up", "left", "right"]
+
+		random.shuffle(dir_array)
+
+		for dir in dir_array:
+
+			if (dir == 'down'):
+				if self.last_move_dir != 'up' and i_0 > 0:
+					if ((i_0 - 1) in self.lines_resolved):
+						pass
+					elif with_resolved and self.plate[i_0 - 1][j_0] in self.resolved: 
+						pass
+					else:
+						mouve : MouveType = {
+								"y": i_0 - 1,
+								"x": j_0,
+								"dir": 'down'
+						}
+						plate_copy = copy.deepcopy(self.plate)
+						self.mouve(mouve, plate_copy)
+						mouve["plate"] = plate_copy
+						heapq.heappush(open_set, (self.heuristic_funct(plate_copy), id(mouve), mouve))
+						if self.plate[i_0 - 1][j_0] in self.resolved:
+							self.resolved.remove(self.plate[i_0 - 1][j_0])
 
 
-		#if (j_0 not in self.col_resolved):
-		if self.last_move_dir != 'up' and i_0 > 0:
-			if ((i_0 - 1) in self.lines_resolved):
-				pass
-			elif with_resolved and self.plate[i_0 - 1][j_0] in self.resolved: 
-				pass
-			else:
-				mouve = {
-						"y": i_0 - 1,
-						"x": j_0,
-						"dir": 'down'
-				}
-				possible_mouves.append(mouve)
-				if self.plate[i_0 - 1][j_0] in self.resolved:
-					self.resolved.remove(self.plate[i_0 - 1][j_0])
+			if (dir == 'up'):
+				if  self.last_move_dir != 'down' and i_0 < self.n - 1:
+					if ((i_0 + 1) in self.lines_resolved):
+						pass
+					elif with_resolved and self.plate[i_0 + 1][j_0] in self.resolved: 
+						pass
+					else:
+						mouve  : MouveType = {
+								"y": i_0 + 1,
+								"x": j_0,
+								"dir": 'up'
+						}
+						plate_copy = copy.deepcopy(self.plate)
+						self.mouve(mouve, plate_copy)
+						mouve["plate"] = plate_copy
+						heapq.heappush(open_set, (self.heuristic_funct(plate_copy),id(mouve), mouve))
+						if self.plate[i_0 + 1][j_0] in self.resolved:
+							self.resolved.remove(self.plate[i_0 + 1][j_0])
 
-		if  self.last_move_dir != 'down' and i_0 < self.n - 1:
-			if ((i_0 + 1) in self.lines_resolved):
-				pass
-			elif with_resolved and self.plate[i_0 + 1][j_0] in self.resolved: 
-				pass
-			else:
-				mouve = {
-						"y": i_0 + 1,
-						"x": j_0,
-						"dir": 'up'
-				}
-				possible_mouves.append(mouve)
-				if self.plate[i_0 + 1][j_0] in self.resolved:
-					self.resolved.remove(self.plate[i_0 + 1][j_0])
+			if (dir == 'right'):
+				if  self.last_move_dir != 'left' and  j_0 > 0:
+					if  (j_0 - 1) in self.col_resolved:
+						pass
+					elif with_resolved and self.plate[i_0][j_0 - 1] in self.resolved: 
+						pass
+					else:
+						mouve : MouveType = {
+							"y": i_0,
+							"x": j_0 - 1,
+							"dir": 'right'
+						}
+						plate_copy = copy.deepcopy(self.plate)
+						self.mouve(mouve, plate_copy)
+						mouve["plate"] = plate_copy
+						heapq.heappush(open_set, (self.heuristic_funct(plate_copy), id(mouve), mouve))
+						if self.plate[i_0][j_0 - 1] in self.resolved:
+							self.resolved.remove(self.plate[i_0 ][j_0 - 1])
 
-		if  self.last_move_dir != 'left' and  j_0 > 0:
-			if  (j_0 - 1) in self.col_resolved:
-				pass
-			elif with_resolved and self.plate[i_0][j_0 - 1] in self.resolved: 
-				pass
-			else:
-				if (j_0 - 1) in self.col_resolved :
-					print(j_0 - 1, ' in col res and empty: ', 'i :', i_0, i_empty, j_empty)
-				mouve = {
-					"y": i_0,
-					"x": j_0 - 1,
-					"dir": 'right'
-				}
-				# if not self.is_node_explored(self.mouve(mouve, taquin_copy), mouve["dir"]):
-				possible_mouves.append(mouve)
-				if self.plate[i_0][j_0 - 1] in self.resolved:
-					self.resolved.remove(self.plate[i_0 ][j_0 - 1])
-		
-		if  self.last_move_dir != 'right' and j_0 < self.n - 1:
-			if  (j_0 + 1) in self.col_resolved:
-				pass
-			elif with_resolved and self.plate[i_0][j_0 + 1] in self.resolved: 
-				pass
-			else:
-				if (j_0 + 1) in self.col_resolved :
-					print(j_0 + 1, ' in col res and empty: ', 'i :', i_0, i_empty, j_empty)
-				mouve = {
-					"y": i_0,
-					"x": j_0 + 1,
-					"dir": 'left'
-				}
-				# if not self.is_node_explored(self.mouve(mouve, taquin_copy), mouve["dir"]):
-				possible_mouves.append(mouve)
-				if self.plate[i_0][j_0 + 1] in self.resolved:
-					self.resolved.remove(self.plate[i_0][j_0 + 1])
+			if (dir == 'left'):
+				if  self.last_move_dir != 'right' and j_0 < self.n - 1:
+					if  (j_0 + 1) in self.col_resolved:
+						pass
+					elif with_resolved and self.plate[i_0][j_0 + 1] in self.resolved: 
+						pass
+					else:
+						mouve : MouveType ={
+							"y": i_0,
+							"x": j_0 + 1,
+							"dir": 'left'
+						}
+						plate_copy = copy.deepcopy(self.plate)
+						self.mouve(mouve, plate_copy)
+						mouve["plate"] = plate_copy
+						heapq.heappush(open_set, (self.heuristic_funct(mouve["plate"]), id(mouve), mouve))
+						if self.plate[i_0][j_0 + 1] in self.resolved:
+							self.resolved.remove(self.plate[i_0][j_0 + 1])
 
-		if (len(possible_mouves) == 0 and with_resolved):
-			return self.possible_mouve(False)
-		return possible_mouves
+		if (len(open_set) == 0 and with_resolved):
+			return self.get_open_set(False)
+		return open_set
 	
 
 	def mouve(self, mouve : MouveType, given_plate: Plate):
@@ -329,7 +349,7 @@ class Taquin:
 				return nb_inversion % 2 != 0
 			
 
-	def is_node_in_utile(self, given_Plate: Plate, mouve: MouveType):
+	def is_node_in_utile(self, given_Plate: Plate):
 		if len(given_Plate) <= 2:
 			return -1
 		for i in range(len(self.utils_nodes) -1, 0, -1):
@@ -337,17 +357,17 @@ class Taquin:
 				return i
 		return -1
 	
-	def idx_node_explored(self, given_Plate: Plate, mouve: MouveType):
+	def idx_node_explored(self, given_Plate: Plate):
 		for i in range(len(self.explored_nodes) -1, 0, -1):
 			if comp_double_tab(self.explored_nodes[i]["plate"], given_Plate):
 				return i 
 		return -1
 
-	def detect_boucle(self, given_plate, mouve : MouveType):
+	def detect_boucle(self, given_plate):
 		if len(self.explored_nodes) < 3:
 			return False
 		
-		idx_node_explored = self.idx_node_explored(given_plate, mouve)
+		idx_node_explored = self.idx_node_explored(given_plate)
 		if idx_node_explored == -1:
 			return False
 		else :
@@ -473,12 +493,8 @@ class Taquin:
 			
 		if (not (self.n -  len(self.lines_resolved) <= 3 or self.n -  len(self.col_resolved) <= 3))\
 		and (found_line > 0 or found_col > 0) and len(self.resolved)  > 5 :
-			print("line res: ", self.lines_resolved)
-			print("col res: ", self.col_resolved)
-			print("resokved: ", self.resolved)
 			to_pop = []
 			for i in range(len(self.resolved) - 1, len(self.resolved) - 5, -1):
-				print("iiii", i)
 				i_res, j_res = self.find_tuile_pos(self.resolved[i], self.plate)
 				if i_res in self.lines_resolved or j_res in self.col_resolved:
 					continue
