@@ -1,7 +1,7 @@
-from multiprocessing import Pipe, Process
+import curses
 import random
-from taquin_class import Taquin, MouveType
-from utils import Plate, comp_double_tab
+from taquin_class import Taquin, MouveType, test_mouves
+from utils import Plate, choice_heuristic, comp_double_tab, parse_file
 import time
 import threading
 from draw_plate import Draw_Taquin
@@ -9,88 +9,91 @@ import copy
 from functools import cmp_to_key
 import sys
 
-def parse_file():
-    file_path = './npuzzle.txt'
-    plate_conf = []
-    
-    with open(file_path, 'r') as file:
-        for line in file:
-            clear_line = line
-            for char in line:
-                if char == '#':
-                    split_comment = line.split('#', 1)
-                    clear_line = split_comment[0]
-            
-            for char in clear_line:
-                if not char.isdigit() and not char.isspace():
-                    raise Exception("Error in puzzle : Taquin tuiles must be numbers only.")
-
-            if len(clear_line) == 0:
-                 continue
-            # Utilise la méthode split() pour diviser la ligne en une liste d'éléments
-            elements = clear_line.split()
-            # Convertis les éléments en entiers si nécessaire
-            row = [int(element) for element in elements]
-            
-            # Ajoute la ligne à la liste à deux dimensions
-            plate_conf.append(row)
-        n = plate_conf[0][0]
-        plate_conf.pop(0)
-        if len(plate_conf) != n:
-                raise Exception("Error in puzzle : Taquin plate must be squared.")
-        for elem in plate_conf:
-             if len(elem) != n:
-                raise Exception("Error in puzzle : Taquin plate must be squared.")
-
-                
-    return plate_conf
-
 
 
 
 
 def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin): 
     
-        draw_taquin.plate_draw = taquin.plate
+        draw_taquin.taquin = taquin
         time.sleep(2)
-        while taquin.misplaced > 0:
+        avoided_boucle = 0 
+        inutile = []
+        while taquin.heuristic > 0:
             #print('manhanan:', taquin.manhatan_distance(taquin.plate))
-            mouves: MouveType = taquin.possible_mouve()
+            mouves: list[MouveType] = taquin.possible_mouve()
+    
+            random.shuffle(mouves)
             for mouve in mouves:
                 plate_cpy = copy.deepcopy(taquin.plate)
                 taquin.mouve(mouve, plate_cpy)
-                mouve['heuristic'] = taquin.heuristic(plate_cpy)
-                if taquin.is_node_explored(plate_cpy, mouve['dir']):
-                     print("already explored")
-                     mouve['heuristic'] **= taquin.n
-           
-                  
-            random.shuffle(mouves)
-            #print('len mouves ', len(mouves))
-            best_mouve =  min(mouves, key=lambda x: x['heuristic'])
-            #print("mouve", mouves)
-          #  print("best mouve", best_mouve)
-            
-            taquin.mouve(best_mouve, taquin.plate)
-            taquin.explored_nodes.append({"plate": copy.deepcopy(taquin.plate), "dir": best_mouve['dir']})
-            taquin.cost += 1
-            taquin.misplaced = best_mouve['heuristic']
-            taquin.last_move_dir = best_mouve['dir']
-            draw_taquin.plate_draw =taquin.plate
-            #time.sleep(0.02)
+                mouve['heuristic'] = taquin.heuristic_funct(plate_cpy)
+                mouve['plate'] = plate_cpy
+                # if taquin.is_corner_mouvable(mouve):
+                #       mouve['heuristic'] = 1
+                     
+              #  sys.exit()
+     
+               
 
-
-        required_mouve = []
         
-        for i in range(0, len(taquin.explored_nodes)): 
-            if taquin.explored_nodes[i] in required_mouve:
-                for k in range(i + 1, len(required_mouve)):
-                     required_mouve.pop(k)
-            else:
-                required_mouve.append(taquin.explored_nodes[i])
-        print("Total number of states ever selected :", len(taquin.explored_nodes))
-        print("Number of moves required  :", len(required_mouve))
+    
+           # print(len(mouves))
+            explored = False
+            best_mouve =  min(mouves, key=lambda x: x['heuristic'])
+            idx = taquin.is_node_in_utile(taquin.plate, mouve)
+            if (idx != -1):
+                for b in range(len(taquin.utils_nodes) - 1, idx - 1 , -1):
+                    taquin.utils_nodes.pop(b)
+                inutile.append(idx)
 
+        
+            while taquin.detect_boucle(best_mouve['plate'], mouve) and (len(mouves) > 1):
+                print("cherche boucle")
+                mouves.remove(best_mouve)
+                best_mouve =  min(mouves, key=lambda x: x['heuristic'])
+                avoided_boucle += 1
+            #print("mouve", [x['dir'] for x in mouves ])
+           # print("best mouve", best_mouve)
+            taquin.explored_nodes.append({"plate": copy.deepcopy(taquin.plate), "dir": best_mouve['dir']}) 
+            if not explored:
+                taquin.utils_nodes.append({"plate": copy.deepcopy(taquin.plate), "dir": best_mouve['dir']})
+            taquin.mouve(best_mouve, taquin.plate)
+           
+            taquin.heuristic = best_mouve['heuristic']
+            taquin.last_move_dir = best_mouve['dir']
+            taquin.set_lines_and_col_resolved()
+            draw_taquin.taquin = taquin
+            #print("resokved: ", taquin.resolved)
+            # print("line res: ", taquin.lines_resolved)
+            # print("col res: ", taquin.col_resolved)
+            # print("col res: ", taquin.col_resolved)
+            # if len(taquin.lines_resolved) > 0 or len(taquin.col_resolved) > 0:
+            #      sys.exit()
+          #  time.sleep(0.5)
+
+
+        # required_mouve = []
+        
+        # for i in range(0, len(taquin.explored_nodes)): 
+        #     for j in range(0, len(required_mouve)):
+
+        #         if taquin.explored_nodes[i]["plate"] == required_mouve[j]["plate"] :
+        #             print("same")
+        #             for k in range(len(required_mouve) - 1, j - 1, -1):
+        #                 print(k,  len(required_mouve) )
+        #                 required_mouve.pop(k)
+        #             break
+        #     required_mouve.append(taquin.explored_nodes[i])
+        print("Total number of states ever selected :", len(taquin.explored_nodes))
+        print("Number of moves required  :", len(taquin.utils_nodes))
+      #  print("Mouves required: ", [mouve["dir"] for mouve in taquin.utils_nodes])
+        print("boucle evité  :", avoided_boucle)
+        print("inutuke :", inutile)
+        time.sleep(3)
+        draw_taquin.run_draw = False
+
+        
 
 
 
@@ -106,9 +109,11 @@ def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin):
 if __name__ ==  '__main__':
         test: Taquin
         try:
-            test = parse_file()
+            plate = parse_file()
+            opt, choice = curses.wrapper(choice_heuristic)
+            print("Your choose ", opt[choice], " as heuristic.")
         
-            taquin = Taquin(test) 
+            taquin = Taquin(plate, choice) 
             if not taquin.is_puzzle_solvable():
                 print("The taquin configuration is not soluble")
                 sys.exit()
@@ -118,5 +123,22 @@ if __name__ ==  '__main__':
             process_thread.start()
             draw_taquin.draw()
             process_thread.join()
-        except Exception as e:
+
+            
+            taquin_test =  Taquin(plate, choice) 
+            test_mouves(taquin_test,  [mouve["dir"] for mouve in taquin.explored_nodes] )
+            taquin_test.plate = plate
+            test_mouves(taquin_test,  [mouve["dir"] for mouve in taquin.utils_nodes] )
+            
+            # draw_taquin.taquin = taquin_test
+            # draw_taquin.run_draw = True
+            # process_thread = threading.Thread(target=test_mouves, args=[taquin_test,  [mouve["dir"] for mouve in taquin.explored_nodes] ])
+            # process_thread.start()
+            # draw_taquin.draw()
+            # process_thread.join()
+            # draw_taquin.run_draw = False
+
+
+        except  EOFError as e :
              print(e)
+
