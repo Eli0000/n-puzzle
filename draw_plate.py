@@ -7,10 +7,6 @@ import time
 import pygame
 from taquin_class import Taquin
 
-
-
-
-
 def get_num_array():
     if len(sys.argv) < 2:
         raise Exception("Please provide one argument")

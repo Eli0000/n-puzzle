@@ -31,7 +31,7 @@ class Taquin:
 		self.n = len(plate)
 		self.last_move_dir = None
 		self.heuristic = self.n * self.n
-		self.explored_nodes = []
+		self.explored_nodes = set()
 		self.utils_nodes = []
 		self.state_in_memory = 2
 
@@ -57,7 +57,7 @@ class Taquin:
 			case 1:
 				self.heuristic_funct = self.nb_bad_placed
 			case 2:
-				self.heuristic_funct = self.count_inversion
+				self.heuristic_funct = self.euclidean_distance
 	
 	def get_final_state(self) -> Plate:
 		final_state: Plate = [[0] * self.n for _ in range(self.n)]
@@ -111,7 +111,6 @@ class Taquin:
 		i_0, j_0 = self.find_tuile_pos(0, self.plate)
 		self.i_0 = i_0
 		self.j_0 = j_0
-		i_empty, j_empty = self.find_tuile_pos(0)
 		dir_array = ["down", "up", "left", "right"]
 
 		random.shuffle(dir_array)
@@ -215,14 +214,6 @@ class Taquin:
 
 		return given_plate
 		
-	  
-	
-
-	def is_node_explored(self, given_Plate: Plate):
-		for node in self.explored_nodes:
-			if comp_double_tab(node["plate"], given_Plate):
-						return True
-		return False
 	   
 
 	def find_tuile_pos(self, tuile: int, plate: Plate | None = None):
@@ -244,17 +235,6 @@ class Taquin:
 				else:
 					final_i, final_j = self.find_tuile_pos(given_plate[i][j])
 					distance = abs(j - final_j) + abs(i - final_i)
-				# if given_plate[i][j] == self.final_state[self.top_indx][self.right_indx]\
-				# or given_plate[i][j] == self.final_state[self.bottom_indx][self.right_indx]\
-				# or given_plate[i][j] == self.final_state[self.top_indx][self.left_indx]\
-				# or given_plate[i][j] == self.final_state[self.bottom_indx][self.left_indx]:
-				# 	distance **= 5
-				# elif given_plate[i][j] != self.final_state[i][j]\
-				# and (i == self.top_indx or i == self.bottom_indx)\
-				# and (j == self.left_indx or j == self.right_indx):
-				# 	distance = self.n * self.n
-				# elif (masked_i!= -1 and masked_j != -1):
-				# 	distance **= 2
 					manhatan_distance += distance
 
 		return manhatan_distance
@@ -262,19 +242,42 @@ class Taquin:
 
 	def euclidean_distance(self, given_plate : Plate):
 		euclidean_distance = 0
+
 		for i in range(0, self.n):
 			for j in range(0, self.n):
-				final_i, final_j = self.find_tuile_pos(given_plate[i][j])
-				distance = sqrt(((j - final_j) ** 2) + ((i - final_i) ** 2))
-				euclidean_distance += distance.real
+				if given_plate[i][j] == 0:
+					pass
+				else:
+					final_i, final_j = self.find_tuile_pos(given_plate[i][j])
+					distance = sqrt(((j - final_j) ** 2) + ((i - final_i) ** 2))
+					euclidean_distance += distance.real
 
 		return euclidean_distance
+	
+
+	def nb_mouves(self, given_plate : Plate):
+		nb_mouves = 0
+		for i in range(0, self.n):
+			for j in range(0, self.n):
+				if given_plate[i][j] == 0:
+					continue
+				pos0_i, pos0_j = self.find_tuile_pos(0)
+				distance0 = sqrt(((pos0_i - j) ** 2) + ((pos0_j - i) ** 2))
+
+				final_i, final_j = self.find_tuile_pos(given_plate[i][j])
+				distance = sqrt(((j - final_j) ** 2) + ((i - final_i) ** 2))
+
+
+
+				nb_mouves += distance0.real + distance.real
+
+		return nb_mouves
 
 	def nb_bad_placed(self, given_plate: Plate):
 		nb_bad_placed = 0
 		for i in range(0, self.n):
 			for j in range(0, self.n):
-				if given_plate[i][j] != self.final_state[i][j]:
+				if  given_plate[i][j] != 0 and given_plate[i][j] != self.final_state[i][j]:
 					nb_bad_placed += 1
 
 		return nb_bad_placed
@@ -349,29 +352,26 @@ class Taquin:
 				return nb_inversion % 2 != 0
 			
 
-	def is_node_in_utile(self, given_Plate: Plate):
-		if len(given_Plate) <= 2:
+	def is_node_in_utile(self, given_plate: Plate):
+		if len(given_plate) <= 2:
 			return -1
+		plate_to_str = ''.join(map(str, [element for col in given_plate for element in col]))
 		for i in range(len(self.utils_nodes) -1, 0, -1):
-			if comp_double_tab(self.utils_nodes[i]["plate"], given_Plate):
+			if self.utils_nodes[i]["plate"] == plate_to_str:
 				return i
 		return -1
-	
-	def idx_node_explored(self, given_Plate: Plate):
-		for i in range(len(self.explored_nodes) -1, 0, -1):
-			if comp_double_tab(self.explored_nodes[i]["plate"], given_Plate):
-				return i 
-		return -1
+
 
 	def detect_boucle(self, given_plate):
 		if len(self.explored_nodes) < 3:
 			return False
 		
-		idx_node_explored = self.idx_node_explored(given_plate)
-		if idx_node_explored == -1:
-			return False
-		else :
+		plate_to_str = ''.join(map(str, [element for col in given_plate for element in col]))
+		if plate_to_str in self.explored_nodes:
 			return True
+		return False
+		
+		
 	
 
 
@@ -629,26 +629,8 @@ class Taquin:
 			if dist < cur_dist :
 				return True
 		return False
-	
+		
 
-	def is_piece_on_corner_path(self, given_plate: Plate):
-		i_0, j_0 = self.find_tuile_pos(0, given_plate)
-		t_r_corner_i, t_r_corner_j = self.find_tuile_pos(self.final_state[self.top_indx][self.right_indx],given_plate)
-		if ((i_0 + 1 == t_r_corner_i or i_0 - 1 == t_r_corner_i) and (j_0 + 1 == t_r_corner_j or j_0 - 1 == t_r_corner_j)):
-			cur_dist= abs(t_r_corner_j - self.left_indx) + abs(t_r_corner_i - self.bottom_indx)
-			dist =  abs(j_0 - self.left_indx) + abs(i_0 - self.bottom_indx)
-			if dist < cur_dist :
-				return True
-		return False	
-
-	
-	
-	def is_piece_block_corner(self, mouve):
-		if (self.plate[mouve["y"]][mouve["x"]] == self.final_state[self.top_indx][self.right_indx]):
-			manathan_distance = abs(mouve["x"] - self.right_indx) + abs(mouve["y"] - self.top_indx)
-			eucledian_distance = (sqrt(((mouve["x"] -  self.right_indx) ** 2) + ((mouve["y"] - self.top_indx) ** 2))).real
-			if (manathan_distance > eucledian_distance):
-				return True
 
 
 	# def closer_to_corner(self, mouve: MouveType):

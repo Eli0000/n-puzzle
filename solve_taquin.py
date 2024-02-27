@@ -23,28 +23,41 @@ def solve_taquin(taquin: Taquin,  draw_taquin: Draw_Taquin):
         while taquin.heuristic > 0:
             mouves : heapq = taquin.get_open_set()
             explored = False
+            print("len mouves", len(mouves))
             best_mouve =  heapq.heappop(mouves)
 
             while taquin.detect_boucle(best_mouve[2]['plate']):
-                if len(mouves) <= 1:
+                do_break = True
+                for elem in mouves:
+                     if not taquin.detect_boucle(elem[2]['plate']):
+                          do_break = False
+                          print("detect not boucke")
+                          break
+                if do_break:
+                     break    
+                if len(mouves) <= 0:
                     idx = taquin.is_node_in_utile(best_mouve[2]['plate'])
                     if (idx != -1):
                         for b in range(len(taquin.utils_nodes) - 1, idx - 1  , -1):
                             taquin.utils_nodes.pop(b)
                         inutile.append(idx)
                         explored = True
+                    print("break")
                     break
                 best_mouve =  heapq.heappop(mouves)
                 avoided_boucle += 1
 
-            taquin.explored_nodes.append({"plate": copy.deepcopy(taquin.plate), "dir": best_mouve[2]['dir']}) 
+
+            plate_to_str = ''.join(map(str, [element for col in taquin.plate for element in col]))
+            taquin.explored_nodes.add(plate_to_str) 
             if not explored:
-                taquin.utils_nodes.append({"plate": copy.deepcopy(taquin.plate), "dir": best_mouve[2]['dir']})
+                taquin.utils_nodes.append({"plate": plate_to_str, "dir": best_mouve[2]['dir']})
             taquin.plate = best_mouve[2]["plate"]
            
             taquin.heuristic = best_mouve[0]
             taquin.last_move_dir = best_mouve[2]['dir']
-            taquin.set_lines_and_col_resolved()
+            if False:
+                taquin.set_lines_and_col_resolved()
             draw_taquin.taquin = taquin
 
         print("Total number of states ever selected :", len(taquin.explored_nodes))
@@ -89,7 +102,7 @@ if __name__ ==  '__main__':
 
             
             taquin_test =  Taquin(plate, choice) 
-            test_mouves(taquin_test,  [mouve["dir"] for mouve in taquin.explored_nodes] )
+           # test_mouves(taquin_test,  [mouve["dir"] for mouve in taquin.explored_nodes] )
             taquin_test.plate = plate
             test_mouves(taquin_test,  [mouve["dir"] for mouve in taquin.utils_nodes] )
             

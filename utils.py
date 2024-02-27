@@ -69,7 +69,7 @@ def choisir_option(win, options):
 def choice_heuristic(stdscr):
     curses.curs_set(0)
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    options = ["Manathan distance", "Number of misplaced", "Number of inversions"]
+    options = ["Manathan distance", "Number of misplaced", "Euclidean distance"]
     choice = choisir_option(stdscr, options)
     stdscr.addstr(5, 0, f"Vous avez choisi : {options[choice]}")
     curses.endwin()
