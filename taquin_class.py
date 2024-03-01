@@ -1,13 +1,9 @@
 from cmath import sqrt
-import random
-import subprocess
-from queue import Queue
-import time
-from utils import Plate, ChainedList, comp_double_tab
-from typing import TypedDict
 import copy
-import sys
 import heapq
+import random
+from utils import CircularChainedList, Plate
+
 
 class MouveType():
 	x: int
@@ -24,42 +20,46 @@ class MouveType():
 
 class Taquin:
 
-
-
-	def __init__(self, plate: Plate, heuristic_choice: int = 0):
+	def __init__(self, plate: Plate, algo_choice = "standard A*", heuristic_choice: int = 0):
 		self.plate = copy.deepcopy(plate)
+		self.plate_simple_array = [element for sous_liste in self.plate for element in sous_liste]
 		self.n = len(plate)
 		self.last_move_dir = None
-		self.heuristic = self.n * self.n
-		self.explored_nodes = set()
-		self.utils_nodes = []
-		self.state_in_memory = 2
-
-		self.snail_dir = ChainedList()
+		self.open_set: heapq = [] 
+		self.closed_set = set()
+		self.heuristic_weight = 1 if self.n < 4 else self.n - 1
+		self.snail_dir = CircularChainedList()
 		self.snail_dir.add_elem('right')
 		self.snail_dir.add_elem("down")
 		self.snail_dir.add_elem('left')
 		self.snail_dir.add_elem("up")
 		self.final_state = self.get_final_state()
-		self.lines_resolved = []
-		self.col_resolved = []
-		self.resolved = []
-		self.top_indx = 0
-		self.bottom_indx = self.n - 1
-		self.right_indx = self.n - 1
-		self.left_indx = 0
+		self.final_state_simple_array =  [element for sous_liste in self.final_state for element in sous_liste]
+		self.final_state_hash = hash(tuple(self.final_state_simple_array))
 		self.i_0, self.j_0 = self.find_tuile_pos(0, self.plate)
+		self.mouves_soluce = None
+		self.algo_choice = algo_choice
 
-		self.util_mouves = []
-		match heuristic_choice:
-			case 0: 
-				self.heuristic_funct = self.manhatan_distance
-			case 1:
-				self.heuristic_funct = self.nb_bad_placed
-			case 2:
-				self.heuristic_funct = self.euclidean_distance
+		if (self.algo_choice == "uniform-cost"):
+			self.heuristic_funct = lambda x: 0
+		else:
+			match heuristic_choice:
+				case 0: 
+					self.heuristic_funct = self.manhatan_distance
+				case 1:
+					self.heuristic_funct = self.nb_mouves
+				case 2:
+					self.heuristic_funct = self.euclidean_distance
 	
+
+	def g(self, current_node):
+		if (self.algo_choice  == "greedy"):
+			return 0
+		return current_node[3] + 1 
+
+
 	def get_final_state(self) -> Plate:
+
 		final_state: Plate = [[0] * self.n for _ in range(self.n)]
 		 
 		i = 0
@@ -104,11 +104,10 @@ class Taquin:
 				
 				
 		return final_state
-
 	
-	def get_open_set(self, with_resolved = True) :
-		open_set = []
-		i_0, j_0 = self.find_tuile_pos(0, self.plate)
+
+	def get_open_nodes(self, current_node) :
+		i_0, j_0 = self.find_tuile_pos(0, current_node[5])
 		self.i_0 = i_0
 		self.j_0 = j_0
 		dir_array = ["down", "up", "left", "right"]
@@ -118,85 +117,80 @@ class Taquin:
 		for dir in dir_array:
 
 			if (dir == 'down'):
-				if self.last_move_dir != 'up' and i_0 > 0:
-					if ((i_0 - 1) in self.lines_resolved):
-						pass
-					elif with_resolved and self.plate[i_0 - 1][j_0] in self.resolved: 
-						pass
-					else:
+				if current_node[2] != 'up' and i_0 > 0:
 						mouve : MouveType = {
 								"y": i_0 - 1,
 								"x": j_0,
 								"dir": 'down'
 						}
-						plate_copy = copy.deepcopy(self.plate)
+						plate_copy = copy.deepcopy(current_node[5])
 						self.mouve(mouve, plate_copy)
-						mouve["plate"] = plate_copy
-						heapq.heappush(open_set, (self.heuristic_funct(plate_copy), id(mouve), mouve))
-						if self.plate[i_0 - 1][j_0] in self.resolved:
-							self.resolved.remove(self.plate[i_0 - 1][j_0])
+						plate_simple_array =  [element for sous_liste in plate_copy for element in sous_liste]
+						if  not(any(tuple_element[0] ==  current_node[4]  for tuple_element in self.closed_set)):
+							g = self.g(current_node)
+							h = self.heuristic_funct(plate_copy) ** self.heuristic_weight
+							hash_current_plate = hash(tuple(plate_simple_array))
+							heapq.heappush(self.open_set, (g + h, id(plate_copy), 'down', g, hash_current_plate, plate_copy, current_node[4]))
 
 
 			if (dir == 'up'):
-				if  self.last_move_dir != 'down' and i_0 < self.n - 1:
-					if ((i_0 + 1) in self.lines_resolved):
-						pass
-					elif with_resolved and self.plate[i_0 + 1][j_0] in self.resolved: 
-						pass
-					else:
+				if  current_node[2] != 'down' and i_0 < self.n - 1:
 						mouve  : MouveType = {
 								"y": i_0 + 1,
 								"x": j_0,
 								"dir": 'up'
 						}
-						plate_copy = copy.deepcopy(self.plate)
+						plate_copy = copy.deepcopy(current_node[5])
 						self.mouve(mouve, plate_copy)
-						mouve["plate"] = plate_copy
-						heapq.heappush(open_set, (self.heuristic_funct(plate_copy),id(mouve), mouve))
-						if self.plate[i_0 + 1][j_0] in self.resolved:
-							self.resolved.remove(self.plate[i_0 + 1][j_0])
+						plate_simple_array =  [element for sous_liste in plate_copy for element in sous_liste]
+						if  not(any(tuple_element[0] ==  current_node[4]  for tuple_element in self.closed_set)):
+							g = self.g(current_node)
+							h = self.heuristic_funct(plate_copy) ** self.heuristic_weight
+							hash_current_plate = hash(tuple(plate_simple_array))
+							heapq.heappush(self.open_set, (g + h, id(plate_copy), 'up', g, hash_current_plate, plate_copy, current_node[4]))
 
 			if (dir == 'right'):
-				if  self.last_move_dir != 'left' and  j_0 > 0:
-					if  (j_0 - 1) in self.col_resolved:
-						pass
-					elif with_resolved and self.plate[i_0][j_0 - 1] in self.resolved: 
-						pass
-					else:
+				if  current_node[2] != 'left' and  j_0 > 0:
 						mouve : MouveType = {
 							"y": i_0,
 							"x": j_0 - 1,
 							"dir": 'right'
 						}
-						plate_copy = copy.deepcopy(self.plate)
+						plate_copy = copy.deepcopy(current_node[5])
 						self.mouve(mouve, plate_copy)
-						mouve["plate"] = plate_copy
-						heapq.heappush(open_set, (self.heuristic_funct(plate_copy), id(mouve), mouve))
-						if self.plate[i_0][j_0 - 1] in self.resolved:
-							self.resolved.remove(self.plate[i_0 ][j_0 - 1])
+						plate_simple_array =  [element for sous_liste in plate_copy for element in sous_liste]
+						if  not(any(tuple_element[0] ==  current_node[4]  for tuple_element in self.closed_set)):
+							g = self.g(current_node)
+							h = self.heuristic_funct(plate_copy) ** self.heuristic_weight
+							hash_current_plate = hash(tuple(plate_simple_array))
+							heapq.heappush(self.open_set, (g + h, id(plate_copy), 'right', g, hash_current_plate, plate_copy, current_node[4]))
 
 			if (dir == 'left'):
-				if  self.last_move_dir != 'right' and j_0 < self.n - 1:
-					if  (j_0 + 1) in self.col_resolved:
-						pass
-					elif with_resolved and self.plate[i_0][j_0 + 1] in self.resolved: 
-						pass
-					else:
+				if  current_node[2] != 'right' and j_0 < self.n - 1:
 						mouve : MouveType ={
 							"y": i_0,
 							"x": j_0 + 1,
 							"dir": 'left'
 						}
-						plate_copy = copy.deepcopy(self.plate)
+						plate_copy = copy.deepcopy(current_node[5])
 						self.mouve(mouve, plate_copy)
-						mouve["plate"] = plate_copy
-						heapq.heappush(open_set, (self.heuristic_funct(mouve["plate"]), id(mouve), mouve))
-						if self.plate[i_0][j_0 + 1] in self.resolved:
-							self.resolved.remove(self.plate[i_0][j_0 + 1])
+						plate_simple_array =  [element for sous_liste in plate_copy for element in sous_liste]
+						if  not(any(tuple_element[0] ==  current_node[4]  for tuple_element in self.closed_set)):
+							g = self.g(current_node)
+							h = self.heuristic_funct(plate_copy) ** self.heuristic_weight
+							hash_current_plate = hash(tuple(plate_simple_array))
+							heapq.heappush(self.open_set, (g + h, id(plate_copy), 'left', g, hash_current_plate, plate_copy, current_node[4]))
 
-		if (len(open_set) == 0 and with_resolved):
-			return self.get_open_set(False)
-		return open_set
+
+
+	def find_tuile_pos(self, tuile: int, plate: Plate | None = None):
+		if plate == None:
+			plate = self.final_state
+		for i in range(0, self.n):
+			for j in range(0, self.n):
+				if plate[i][j] == tuile:
+					return i, j
+		return -1, -1
 	
 
 	def mouve(self, mouve : MouveType, given_plate: Plate):
@@ -213,17 +207,6 @@ class Taquin:
 		given_plate[mouve["y"]][mouve["x"]] = 0
 
 		return given_plate
-		
-	   
-
-	def find_tuile_pos(self, tuile: int, plate: Plate | None = None):
-		if plate == None:
-			plate = self.final_state
-		for i in range(0, self.n):
-			for j in range(0, self.n):
-				if plate[i][j] == tuile:
-					return i, j
-		return -1, -1
 	
 	def manhatan_distance(self, given_plate: Plate):
 		manhatan_distance = 0
@@ -238,7 +221,7 @@ class Taquin:
 					manhatan_distance += distance
 
 		return manhatan_distance
-
+	
 
 	def euclidean_distance(self, given_plate : Plate):
 		euclidean_distance = 0
@@ -253,7 +236,18 @@ class Taquin:
 					euclidean_distance += distance.real
 
 		return euclidean_distance
+
+
+	def nb_bad_placed(self, given_plate: Plate):
+		nb_bad_placed = 0
+		for i in range(0, self.n):
+			for j in range(0, self.n):
+				if  given_plate[i][j] != 0 and given_plate[i][j] != self.final_state[i][j]:
+					nb_bad_placed += 1
+
+		return nb_bad_placed
 	
+
 
 	def nb_mouves(self, given_plate : Plate):
 		nb_mouves = 0
@@ -267,22 +261,24 @@ class Taquin:
 				final_i, final_j = self.find_tuile_pos(given_plate[i][j])
 				distance = sqrt(((j - final_j) ** 2) + ((i - final_i) ** 2))
 
-
-
 				nb_mouves += distance0.real + distance.real
 
 		return nb_mouves
 
-	def nb_bad_placed(self, given_plate: Plate):
-		nb_bad_placed = 0
-		for i in range(0, self.n):
-			for j in range(0, self.n):
-				if  given_plate[i][j] != 0 and given_plate[i][j] != self.final_state[i][j]:
-					nb_bad_placed += 1
+	def is_puzzle_solvable(self):
+		taquin = self
+		nb_inversion = self.count_inversion(self.plate)
 
-		return nb_bad_placed
+		empty_pos_i, empty_pos_j = taquin.find_tuile_pos(0, taquin.plate)
+		final_empty_pos_i, final_empty_pos_j = taquin.find_tuile_pos(0)
+		distance_empty_tuile = abs(empty_pos_j - final_empty_pos_j) + abs(empty_pos_i - final_empty_pos_i)
 
 
+		if distance_empty_tuile % 2 == 0:
+			return nb_inversion % 2 == 0
+		else:
+			return nb_inversion % 2 != 0
+			
 
 
 	def count_inversion(self, given_plate: Plate):
@@ -326,354 +322,12 @@ class Taquin:
 
 			current_dir_node = current_dir_node.next
 
+		numbers =  [self.n ** 2 if x == 0 else x for x in numbers]
 		for i in range(len(numbers), 0, -1):
 			for element in numbers[:-i]:
-				if element != 0 and  numbers[-i] != 0 and element > numbers[-i]:
+				if element > numbers[-i]:
 					inversion.add((element, numbers[-i]))
 
-
-
 		return len(inversion)
-
-
-	def is_puzzle_solvable(self):
-		taquin = self
-		nb_inversion = self.count_inversion(self.plate)
-
-		empty_pos_i, empty_pos_j = taquin.find_tuile_pos(0, taquin.plate)
-		final_empty_pos_i, final_empty_pos_j = taquin.find_tuile_pos(0)
-		distance_empty_tuile = abs(empty_pos_j - final_empty_pos_j) + abs(empty_pos_i - final_empty_pos_i)
-
-
-		match distance_empty_tuile % 2:	
-			case 0:
-				return nb_inversion % 2 == 0
-			case 1:
-				return nb_inversion % 2 != 0
-			
-
-	def is_node_in_utile(self, given_plate: Plate):
-		if len(given_plate) <= 2:
-			return -1
-		plate_to_str = ''.join(map(str, [element for col in given_plate for element in col]))
-		for i in range(len(self.utils_nodes) -1, 0, -1):
-			if self.utils_nodes[i]["plate"] == plate_to_str:
-				return i
-		return -1
-
-
-	def detect_boucle(self, given_plate):
-		if len(self.explored_nodes) < 3:
-			return False
-		
-		plate_to_str = ''.join(map(str, [element for col in given_plate for element in col]))
-		if plate_to_str in self.explored_nodes:
-			return True
-		return False
-		
-		
 	
 
-
-	def is_3_tuiles_betwenn(self, i: int, j: int, dir: str):
-		space : int
-
-		if not((j == self.left_indx or j == self.right_indx) and (i == self.top_indx or i == self.bottom_indx)):
-			match dir:
-				case "down":
-					if (i + 3 >= self.n):
-						return False
-				case "up":
-					if (i - 3 < 0):
-						return False
-				case "right":
-					if (j + 3 >= self.n):
-						return False
-				case "left":
-					if (j - 3 < 0):
-						return False
-				
-		if (j + 3 < self.n):
-			space = 3
-		else:
-			space = self.n - j - 1
-		if (j < self.n - 1 and i not in self.lines_resolved ):
-			if (self.plate[i][j + 1] not in self.resolved and j + 1 not in self.col_resolved)\
-			and (j + space in self.col_resolved or self.plate[i][j + space] in self.resolved or self.plate[i][j + space] == 0):
-				return False
-				
-		if (j - 3 >= 0):
-			space = 3
-		else :
-			space = j
-		if (j > 0 and i not in self.lines_resolved  ):
-			if (self.plate[i][j - 1] not in self.resolved and j - 1 not in self.col_resolved)\
-			and (j - space in self.col_resolved or self.plate[i][j - space] in self.resolved or self.plate[i][j - space] == 0):
-				return False
-			
-		if (i + 3 < self.n):
-			space = 3
-		else:
-			space = self.n - i - 1
-		if (i < self.n - 1  and j not in self.col_resolved ):
-			if (self.plate[i + 1][j] not in self.resolved and i + 1 not in self.lines_resolved)\
-			and (i + space in self.lines_resolved or self.plate[i + space][j] in self.resolved or self.plate[i + space][j] == 0):
-				return False
-			
-		if (i - 3 >= 0):
-			space = 3
-		else :
-			space = i
-		if (i > 0 ):
-			if (self.plate[i - 1][j] not in self.resolved and i - 1 not in self.lines_resolved)\
-			and (i - space in self.lines_resolved or self.plate[i - space][j] in self.resolved or self.plate[i - space][j] == 0):
-				return False
-				
-		return True
-
-	def set_lines_and_col_resolved(self):
-
-		
-		if (self.n -  len(self.lines_resolved) <= 3 or self.n -  len(self.col_resolved) <= 3):
-			self.resolved.clear()
-
-		found_line = 0
-		found_col = 0
-
-		if self.n -  len(self.lines_resolved) > 3:
-			# Check lines from index 0
-			for i in range(0, self.n):	
-				if self.plate[i] == self.final_state[i] and 0 not in self.plate[i]:
-					if  i not in self.lines_resolved:
-						self.lines_resolved.append(i)
-						found_line += 1
-				else:
-					break 
-				if self.n -  len(self.lines_resolved) <= 3:
-					break
-
-			# Check lines from index n - 1
-			for i in range(self.n - 1, 0, -1):
-				if self.plate[i] == self.final_state[i]  and 0 not in self.plate[i]:
-					if  i not in self.lines_resolved:
-						self.lines_resolved.append(i)
-						found_line += 1
-				else:
-					break 
-				if self.n -  len(self.lines_resolved) <= 3:
-					break
-		
-	
-		if self.n -  len(self.col_resolved) > 3:
-			# Check cols from index 0
-			for i in range(0, self.n):
-				col = [elem[i] for elem in self.plate]
-				col_resolved = [elem[i] for elem in self.final_state]
-				if col == col_resolved  and 0 not in col:
-					if  i not in self.col_resolved:
-						self.col_resolved.append(i)
-						found_col += 1
-				else:
-					break 
-				if self.n -  len(self.col_resolved) <= 3:
-					break
-			
-			# Check cols from index n - 1
-			for i in range(self.n - 1, 0, -1):
-				col = [elem[i] for elem in self.plate]
-				col_resolved = [elem[i] for elem in self.final_state]
-				if col == col_resolved and 0 not in col:
-					if i not in self.col_resolved:
-						self.col_resolved.append(i)
-						found_col += 1
-				else:
-					break
-				if self.n -  len(self.col_resolved) <= 3:
-					break
-			
-		if (not (self.n -  len(self.lines_resolved) <= 3 or self.n -  len(self.col_resolved) <= 3))\
-		and (found_line > 0 or found_col > 0) and len(self.resolved)  > 5 :
-			to_pop = []
-			for i in range(len(self.resolved) - 1, len(self.resolved) - 5, -1):
-				i_res, j_res = self.find_tuile_pos(self.resolved[i], self.plate)
-				if i_res in self.lines_resolved or j_res in self.col_resolved:
-					continue
-				for u in range(found_line):
-					if (u > i_res and (self.lines_resolved[u] - i_res) < 3):
-						to_pop.append(i)
-						continue
-					if (u < i_res and (i_res - self.lines_resolved[u] ) < 3):
-						to_pop.append(i)
-						continue
-
-				for k in range(found_col):
-					if (k > j_res and (self.col_resolved[k] - j_res) < 3):
-						to_pop.append(i)
-						continue
-					if (k < j_res and (j_res - self.col_resolved[k] ) < 3):
-						to_pop.append(i)
-						continue
-			for idx in to_pop:
-				self.resolved.pop(idx)
-
-
-
-		if self.n -  len(self.col_resolved) <= 3 and self.n -  len(self.lines_resolved) <= 3:
-			return
-		
-		if (self.bottom_indx) - (self.top_indx + 1) >= 3:
-			while self.top_indx + 1 < self.n and self.top_indx in self.lines_resolved:
-				self.top_indx += 1
-
-		if (self.bottom_indx) - (self.top_indx + 1) >= 3:
-			while  self.bottom_indx - 1 > 0 and  self.bottom_indx  in self.lines_resolved:
-				self.bottom_indx -= 1
-
-		if (self.right_indx) - (self.left_indx + 1) >= 3:
-			while self.left_indx + 1 < self.n and self.left_indx in self.col_resolved:
-				self.left_indx += 1
-
-		if (self.right_indx) - (self.left_indx + 1) >= 3:
-			while  self.right_indx - 1 > 0 and  self.right_indx in self.col_resolved:
-				self.right_indx -= 1
-
-		# print("top:" , self.top_indx)
-		# print("bottom:" , self.bottom_indx)
-		# print("left:" , self.left_indx)
-		# print("right:" , self.right_indx)
-	
-
-		i = self.top_indx 
-		while i < self.n\
-			and (self.plate[i][self.left_indx] == self.final_state[i][self.left_indx] and self.is_3_tuiles_betwenn(i, self.left_indx, "down")):
-			if (self.plate[i][self.left_indx] not in self.resolved):
-				self.resolved.append(self.plate[i][self.left_indx])
-			i += 1
-		i = self.left_indx
-		while i < self.n\
-			and ((self.plate[self.top_indx][i] == self.final_state[self.top_indx][i]) and self.is_3_tuiles_betwenn(self.top_indx, i, "right")):
-			if (self.plate[self.top_indx][i] not in self.resolved):
-				self.resolved.append(self.plate[self.top_indx][i])
-			i += 1
-	
-
-		i = self.bottom_indx 
-		while i >= 0\
-		and ((self.plate[i][self.left_indx] == self.final_state[i][self.left_indx]) and self.is_3_tuiles_betwenn(i, self.left_indx, 'up')):
-			if (self.plate[i][self.left_indx] not in self.resolved):
-				self.resolved.append(self.plate[i][self.left_indx])
-			i -= 1
-		i = self.left_indx 
-		while i < self.n\
-		and ((self.plate[self.bottom_indx][i] == self.final_state[self.bottom_indx][i]) and self.is_3_tuiles_betwenn(self.bottom_indx, i, "right")):
-			if (self.plate[self.bottom_indx][i] not in self.resolved):
-				self.resolved.append(self.plate[self.bottom_indx][i])
-			i += 1
-
-
-		i = self.top_indx 
-		while i < self.n\
-		and ((self.plate[i][self.right_indx] == self.final_state[i][self.right_indx])  and  self.is_3_tuiles_betwenn(i, self.right_indx, 'down')):
-			if (self.plate[i][self.right_indx] not in self.resolved):
-				self.resolved.append(self.plate[i][self.right_indx])
-			i += 1
-		i = self.right_indx
-		while i >= 0\
-		and ((self.plate[self.top_indx][i] == self.final_state[self.top_indx][i])  and self.is_3_tuiles_betwenn(self.top_indx, i, "left")):
-			if (self.plate[self.top_indx][i] not in self.resolved):
-				self.resolved.append(self.plate[self.top_indx][i])
-			i -= 1
-
-		i = self.bottom_indx 
-		while i >= 0\
-		and ((self.plate[i][self.right_indx] == self.final_state[i][self.right_indx])  and self.is_3_tuiles_betwenn(i, self.right_indx, "up")):
-			if (self.plate[i][self.right_indx] not in self.resolved):
-				self.resolved.append(self.plate[i][self.right_indx])
-			i -= 1
-		i = self.right_indx 
-		while i >= 0\
-		and ((self.plate[self.bottom_indx][i] == self.final_state[self.bottom_indx][i]) and self.is_3_tuiles_betwenn(self.bottom_indx, i, "left")):
-			if (self.plate[self.bottom_indx][i] not in self.resolved):
-				self.resolved.append(self.plate[self.bottom_indx][i])
-			i -= 1
-	
-							
-
-	def is_corner_mouvable(self, mouve: MouveType):
-		if self.plate[mouve['y']][mouve["x"]] != self.final_state[mouve['y']][mouve["x"]] and (mouve["y"] == self.top_indx or mouve["y"] == self.bottom_indx) and (mouve["x"] == self.left_indx or mouve["x"] == self.right_indx):
-			return True
-		return False
-	
-
-	def is_corner_closer(self, mouve: MouveType):
-		if self.plate[mouve['y']][mouve['x']] == self.final_state[mouve['y']][mouve['x']]:
-			return False
-		if self.plate[mouve['y']][mouve['x']] == self.final_state[self.top_indx][self.right_indx]:
-			cur_dist= abs(mouve['x']- self.right_indx) + abs(mouve['y'] - self.top_indx)
-			dist =  abs(self.j_0 - self.right_indx) + abs(self.i_0 - self.top_indx)
-			if dist < cur_dist:
-				return True
-		if  self.plate[mouve['y']][mouve['x']] == self.final_state[self.bottom_indx][self.right_indx]:
-			cur_dist= abs(mouve['x']- self.right_indx) + abs(mouve['y'] - self.bottom_indx)
-			dist =  abs(self.j_0 - self.right_indx) + abs(self.i_0 - self.bottom_indx)
-			if dist < cur_dist :
-				return True
-		if self.plate[mouve['y']][mouve['x']] == self.final_state[self.top_indx][self.left_indx]:
-			cur_dist= abs(mouve['x']- self.left_indx) + abs(mouve['y'] - self.top_indx)
-			dist =  abs(self.j_0 - self.left_indx) + abs(self.i_0 - self.top_indx)
-			if dist < cur_dist:
-				return True
-		if  self.plate[mouve['y']][mouve['x']] == self.final_state[self.bottom_indx][self.left_indx]:
-			cur_dist= abs(mouve['x']- self.left_indx) + abs(mouve['y'] - self.bottom_indx)
-			dist =  abs(self.j_0 - self.left_indx) + abs(self.i_0 - self.bottom_indx)
-			if dist < cur_dist :
-				return True
-		return False
-		
-
-
-
-	# def closer_to_corner(self, mouve: MouveType):
-	# 	if self.plate[mouve['y']][mouve['x']] == self.final_state[self.top_indx][self.right_indx]:
-
-
-	def mask_final_state(self):
-		mask = self.n * self.n + 1
-		self.masked_final_state = copy.deepcopy(self.final_state)
-		for i in range(self.top_indx + 1, self.bottom_indx):
-			for j in range(self.left_indx + 1, self.right_indx):
-				self.masked_final_state[i][j] = mask
-
-
-
-
-
-
-
-def test_mouves(taquin_test: Taquin, mouves: list[str]):
-	i_0, j_0 = taquin_test.find_tuile_pos(0, taquin_test.plate)
-	for mouve in mouves:
-		match mouve:
-			case 'down':
-				taquin_test.plate[i_0][j_0] = taquin_test.plate[i_0 - 1][j_0]
-				taquin_test.plate[i_0 - 1][j_0] = 0
-				i_0 -= 1
-			case 'up':
-				
-				taquin_test.plate[i_0][j_0] = taquin_test.plate[i_0 + 1][j_0]
-				taquin_test.plate[i_0 + 1][j_0] = 0
-				i_0 += 1
-			case 'right':
-				taquin_test.plate[i_0][j_0] = taquin_test.plate[i_0][j_0 - 1]
-				taquin_test.plate[i_0][j_0 - 1] = 0
-				j_0 -= 1
-			case 'left':
-				taquin_test.plate[i_0][j_0] = taquin_test.plate[i_0][j_0 + 1]
-				taquin_test.plate[i_0][j_0 + 1] = 0
-				j_0 += 1
-
-	if (taquin_test.plate == taquin_test.final_state):
-		print("Le taquin est resolue")
-
-	else:
-		 print("Le taquin n'est pas resolue")
