@@ -25,8 +25,7 @@ def get_num_array():
 
 
 class Draw_Taquin:
-
-
+	
 	def __init__(self) -> None:
 		self.run_draw = True
 		self.taquin : Plate = None

@@ -87,9 +87,9 @@ def choice_algorithm(stdscr):
 		case 0:
 			choice = "standard A*"
 		case 1:
-			choice = "greedy"
+			choice = "Greedy search"
 		case 2:
-			choice = 'uniform-cost'
+			choice = 'Uniform cost'
 	curses.endwin()
 	return options, choice
 

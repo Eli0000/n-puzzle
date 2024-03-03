@@ -40,12 +40,12 @@ class Taquin:
 		self.mouves_soluce = None
 		self.algo_choice = algo_choice
 
-		if (self.algo_choice == "uniform-cost"):
+		if (self.algo_choice == "Uniform cost"):
 			self.heuristic_funct = lambda x: 0
 		else:
 			match heuristic_choice:
 				case 0: 
-					self.heuristic_funct = self.manhatan_distance
+					self.heuristic_funct = self.pondered_manhatan_distance
 				case 1:
 					self.heuristic_funct = self.nb_mouves
 				case 2:
@@ -53,7 +53,7 @@ class Taquin:
 	
 
 	def g(self, current_node):
-		if (self.algo_choice  == "greedy"):
+		if (self.algo_choice  == "Greedy search"):
 			return 0
 		return current_node[3] + 1 
 
@@ -223,6 +223,29 @@ class Taquin:
 		return manhatan_distance
 	
 
+	def pondered_manhatan_distance(self, given_plate: Plate):
+		manhatan_distance = 0
+
+		for i in range(0, self.n):
+			for j in range(0, self.n):
+				if given_plate[i][j] == 0:
+					pass
+				else:
+					final_i, final_j = self.find_tuile_pos(given_plate[i][j])
+					distance = abs(j - final_j) + abs(i - final_i)
+					weight = 1
+					if (i > self.n):
+						weight += i ** 2
+					elif (i < self.n):
+						weight += abs(i - self.n) ** 2
+					if (j > self.n):
+						weight += j ** 2
+					elif (j < self.n):
+						weight += abs(j - self.n)  ** 2
+					manhatan_distance += distance * weight
+
+		return manhatan_distance
+	
 	def euclidean_distance(self, given_plate : Plate):
 		euclidean_distance = 0
 
