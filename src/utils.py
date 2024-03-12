@@ -96,7 +96,7 @@ def choice_algorithm(stdscr):
 
 
 def parse_file():
-	file_path = './npuzzle.txt'
+	file_path = '../npuzzle.txt'
 	plate_conf = []
 	
 	with open(file_path, 'r') as file:

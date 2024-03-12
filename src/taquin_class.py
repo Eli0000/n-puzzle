@@ -4,6 +4,7 @@ import heapq
 import random
 from utils import CircularChainedList, Plate
 
+canceled = False
 
 class MouveType():
 	x: int

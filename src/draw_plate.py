@@ -5,7 +5,7 @@ environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from utils import Plate
 import time
 import pygame
-from taquin_class import Taquin
+from taquin_class import Taquin, canceled
 
 def get_num_array():
 	if len(sys.argv) < 2:
@@ -36,6 +36,7 @@ class Draw_Taquin:
 
 	def draw(self):
 		pygame.init()
+		global canceled
 		while self.taquin == None:
 			time.sleep(0.1)
 
@@ -67,9 +68,11 @@ class Draw_Taquin:
 		while self.run_draw:
 			for event in pygame.event.get():
 				if event.type == pygame.QUIT:
+					canceled = True
 					self.run_draw = False
 					pygame.quit()
 					sys.exit()
+					
 
 
 			# Efface l'écran avec une couleur blanche
@@ -98,15 +101,12 @@ class Draw_Taquin:
 
 
 						pygame.draw.rect(screen, color, (x, y, self.square_size, self.square_size))
-				   #     pygame.draw.rect(screen, white, (x, y, self.square_size, self.square_size), floor(self.square_size * 0.015) )
 						text = self.font.render(str(self.taquin[i][j]), True, white)
 						text_rect = text.get_rect(center=(x + self.square_size / 2, y + self.square_size / 2))
 						screen.blit(text, text_rect)
 
-			# Met à jour l'affichage
 			pygame.display.flip()
 
-		# Quitte Pygame
 		pygame.display.quit() 
 		pygame.quit()
 		return

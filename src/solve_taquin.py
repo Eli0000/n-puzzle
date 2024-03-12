@@ -1,6 +1,6 @@
 from ctypes import addressof
 import curses
-from taquin_class import Taquin
+from taquin_class import Taquin, canceled
 from utils import Plate, choice_algorithm, choice_heuristic, parse_file
 import time
 import threading
@@ -9,13 +9,9 @@ import sys
 import heapq
 
 
-
-
-
-
 def solve_taquin(taquin: Taquin, draw_taquin: Draw_Taquin): 
 		
-
+		global canceled
 		draw_taquin.taquin = taquin.plate
 		time.sleep(3)
 		plate_simple_array =  [element for sous_liste in taquin.plate for element in sous_liste]
@@ -25,7 +21,10 @@ def solve_taquin(taquin: Taquin, draw_taquin: Draw_Taquin):
 
 
 		while current_node[4] != taquin.final_state_hash:
-
+			print(canceled)
+			if canceled:
+				print("canceleddd")
+				return
 			draw_taquin.taquin = current_node[5]
 			taquin.get_open_nodes(current_node)
 			taquin.closed_set.add(tuple((current_node[4], current_node[2], current_node[6])))
@@ -63,18 +62,9 @@ def solve_taquin(taquin: Taquin, draw_taquin: Draw_Taquin):
 
 
 
-		
-
-
-
-
-
-
-
 
 
 if __name__ ==  '__main__':
-		test: Taquin
 		try:
 			plate = parse_file()
 
@@ -109,6 +99,8 @@ if __name__ ==  '__main__':
 			
 			
 	
+		except Exception as e:
+			print(e)
 
 		except  EOFError as e :
 			 print(e)
