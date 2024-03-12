@@ -21,7 +21,6 @@ def solve_taquin(taquin: Taquin, draw_taquin: Draw_Taquin):
 
 
 		while current_node[4] != taquin.final_state_hash:
-			print(canceled)
 			if canceled:
 				print("canceleddd")
 				return
