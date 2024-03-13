@@ -1,6 +1,6 @@
 import curses
 from taquin_class import Taquin
-from utils import choice_algorithm, choice_heuristic, parse_file
+from utils import choice_algorithm, choice_heuristic, get_plate, parse_file
 import time
 import threading
 from draw_plate import Draw_Taquin, draw_soluce
@@ -12,7 +12,7 @@ def solve_taquin(taquin: Taquin, draw_taquin: Draw_Taquin):
 
     global canceled
     draw_taquin.taquin = taquin.plate
-    time.sleep(3)
+    #time.sleep(3)
     plate_simple_array = [
         element for sous_liste in taquin.plate for element in sous_liste]
     hash_current_plate = hash(tuple(plate_simple_array))
@@ -62,7 +62,7 @@ def solve_taquin(taquin: Taquin, draw_taquin: Draw_Taquin):
 
 if __name__ == '__main__':
     try:
-        plate = parse_file()
+        plate = get_plate(sys.argv)
 
         opt_algo, choice_algo = curses.wrapper(choice_algorithm)
         if (choice_algo != "uniform-cost"):
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         sys.exit()
 
     except Exception as e:
-        print(e)
+        print("Error:", e.args[-1])
 
     except KeyboardInterrupt as e:
         print('Canceled')

@@ -1,5 +1,7 @@
 
 import curses
+import random
+import sys
 import time
 from typing import List, Type
 
@@ -94,8 +96,7 @@ def choice_algorithm(stdscr):
     return options, choice
 
 
-def parse_file():
-    file_path = './npuzzle.txt'
+def parse_file(file_path):
     plate_conf = []
 
     with open(file_path, 'r') as file:
@@ -109,7 +110,7 @@ def parse_file():
             for char in clear_line:
                 if not char.isdigit() and not char.isspace():
                     raise Exception(
-                        "Error in puzzle : Taquin tuiles must be numbers only.")
+                        "Taquin tuiles must be numbers only.")
 
             if len(clear_line) == 0:
                 continue
@@ -122,17 +123,48 @@ def parse_file():
             plate_conf.append(row)
         if len(plate_conf[0]) <= 0:
             raise Exception(
-                "Error in puzzle : Taquin plate must not contain empty line.")
+                "Taquin plate must not contain empty line.")
         n = plate_conf[0][0]
         plate_conf.pop(0)
         if (n < 3):
             raise Exception(
-                "Error in puzzle : Taquin plate must have a size of 3 minimum.")
+                "Taquin plate must have a size of 3 minimum.")
         if len(plate_conf) != n:
-            raise Exception("Error in puzzle : Taquin plate must be squared.")
+            raise Exception("Taquin plate must be squared.")
         for elem in plate_conf:
             if len(elem) != n:
                 raise Exception(
-                    "Error in puzzle : Taquin plate must be squared.")
+                    "Taquin plate must be squared.")
 
     return plate_conf
+
+def generate_plate(size: str):
+    if not size.isdigit():
+        raise Exception("Invalid size")
+    
+    size = int(size)
+    if (size < 3):
+        raise Exception("The size must be minimum 3")
+    
+    array = [i for i in range(0, size * size)]
+    random.shuffle(array)
+    plate = []
+    i = 0
+    while i < len(array):
+        plate.append(array[i:i + size])
+        i += size
+    
+    return plate
+
+def get_plate(argv: list[str]):
+    if (len(argv) != 3):
+            raise Exception("Error: specify -f (--file) <path> option to use a input file\
+                            or -r (--random) <size> to randomly generated state")
+    match argv[1]:
+        case '-f' | '--file':
+            return parse_file(argv[2])
+
+        case '-r' | '--random':
+            return generate_plate(argv[2])
+        case _:
+            raise Exception('Invalid option -r (--random) | -f (--file)')
