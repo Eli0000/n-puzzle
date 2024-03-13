@@ -3,7 +3,7 @@ Algo to solve n-puzzle (Taquin).
 
 # Usage
 
-Lauch solve_taquin2.py with plate cofiguration file as argument:
+Lauch npuzzle.py with plate cofiguration file as argument:
 
 Conf file exemple:
 

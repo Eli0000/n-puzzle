@@ -1,7 +1,6 @@
-from ctypes import addressof
 import curses
 from taquin_class import Taquin
-from utils import Plate, choice_algorithm, choice_heuristic, parse_file
+from utils import choice_algorithm, choice_heuristic, parse_file
 import time
 import threading
 from draw_plate import Draw_Taquin, draw_soluce
@@ -80,7 +79,7 @@ if __name__ == '__main__':
             sys.exit()
 
         draw_taquin = Draw_Taquin()
-        
+
         # process_thread = threading.Thread(
         # target=solve_taquin, args=[taquin, draw_taquin])
         # process_thread.start()
