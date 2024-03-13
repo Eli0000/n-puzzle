@@ -1,4 +1,4 @@
-SOLVE_TAQUIN = src/solve_taquin.py
+SOLVE_TAQUIN = src/npuzzle.py
 GET_NPUZZLE =  src/npuzzle-gen.py
 NPUZZLE_OUTPUT = npuzzle.txt
 

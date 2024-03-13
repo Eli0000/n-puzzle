@@ -80,11 +80,14 @@ if __name__ == '__main__':
             sys.exit()
 
         draw_taquin = Draw_Taquin()
-        process_thread = threading.Thread(
-            target=solve_taquin, args=[taquin, draw_taquin])
-        process_thread.start()
-        draw_taquin.draw()
-        process_thread.join()
+        
+        # process_thread = threading.Thread(
+        # target=solve_taquin, args=[taquin, draw_taquin])
+        # process_thread.start()
+        # draw_taquin.draw()
+        # process_thread.join()
+            
+        solve_taquin(taquin, draw_taquin)
 
         draw_taquin.run_draw = True
         process_thread = threading.Thread(target=draw_soluce, args=[taquin, draw_taquin ])
