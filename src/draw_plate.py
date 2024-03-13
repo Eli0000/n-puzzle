@@ -112,6 +112,8 @@ def draw_soluce(taquin: Taquin, draw: Draw_Taquin):
     i_0, j_0 = taquin.find_tuile_pos(0, taquin.plate)
     to_draw = taquin.plate
     for mouve in taquin.mouves_soluce:
+        if (draw.canceled):
+            return
         match mouve:
             case 'down':
                 to_draw[i_0][j_0] = to_draw[i_0 - 1][j_0]
