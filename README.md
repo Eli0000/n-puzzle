@@ -3,7 +3,8 @@ Algo to solve n-puzzle (Taquin).
 
 # Usage
 
-Lauch npuzzle.py with plate cofiguration file as argument:
+python npuzzle -f (--file) <file-conf-path>
+python npuzzle -r (--random) <size>
 
 Conf file exemple:
 
